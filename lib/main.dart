@@ -3,6 +3,7 @@ import 'dart:async';
 import 'dart:html';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:flutter_web3/flutter_web3.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:youtube_player_iframe/youtube_player_iframe.dart';
@@ -57,7 +58,11 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   Timer? _timer;
   int _time = 43;
-  bool _visible = false;
+  Contract? _contract;
+  bool _isGiven = false;
+  bool _isGot = false;
+  bool? _isConnected;
+  bool _isLoader = false;
   final YoutubePlayerController _controller = YoutubePlayerController(
     initialVideoId: 'N0tNPT-3gLE',
     params: const YoutubePlayerParams(
@@ -87,13 +92,22 @@ class _MyHomePageState extends State<MyHomePage> {
           final accs = await ethereum!.requestAccount();
           print(accs.first);
           final web3provider = Web3Provider(ethereum!);
+          final network = await web3provider.getNetwork();
+          print(network.chainId);
           final signer = web3provider.getSigner();
-          const contractAddress = '0x794372fC0aE0E8927629c6fa606B99C65c91D6CC';
-          final abi = await rootBundle.loadString('json/ERC20.json');
-          Contract(contractAddress, abi, signer);
+          const contractAddress = '0x656C214981ab2A519c1ef0e90517F0240a74B343';
+          final abi = await rootBundle.loadString('json/youtube_to_earn.json');
+          _contract = Contract(contractAddress, abi, signer);
+          if (network.chainId == 4) {
+            _isConnected = true;
+          } else {
+            _isConnected = false;
+          }
         } on EthereumUserRejected {
           print('User rejected the modal');
         }
+      } else {
+        _isConnected = false;
       }
     });
   }
@@ -107,9 +121,17 @@ class _MyHomePageState extends State<MyHomePage> {
       _time -= 1;
       if (_time == 0) {
         _timer!.cancel();
-        _visible = true;
+        _isGiven = true;
       }
     });
+  }
+
+  void _giveToken() {
+    _contract!.call('giveToken', [1234]).then((value) {
+      _isLoader = false;
+      _isGot = true;
+    });
+    _isLoader = true;
   }
 
   @override
@@ -122,24 +144,50 @@ class _MyHomePageState extends State<MyHomePage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            SizedBox(
-              height: 600,
-              child: YoutubePlayerControllerProvider(
-                controller: _controller,
-                child: const YoutubePlayerIFrame(),
-              ),
-            ),
-            const SizedBox(height: 30),
-            if (_visible)
-              OutlinedButton(
-                child: const Text('Get'),
-                onPressed: () => null,
+            if (_isConnected == null)
+              Container()
+            else if (_isConnected == true)
+              Stack(
+                alignment: AlignmentDirectional.center,
+                children: [
+                  Column(
+                    children: <Widget>[
+                      SizedBox(
+                        height: 600,
+                        child: YoutubePlayerControllerProvider(
+                          controller: _controller,
+                          child: const YoutubePlayerIFrame(),
+                        ),
+                      ),
+                      const SizedBox(height: 30),
+                      if (_isGot)
+                        const Text('You got! Thank you!')
+                      else if (_isLoader)
+                        SpinKitRing(
+                          size: 50,
+                          color: Theme.of(context).primaryColor.withOpacity(1),
+                        )
+                      else if (_isGiven)
+                        OutlinedButton(
+                          child: Text('Get',
+                              style: Theme.of(context).textTheme.button),
+                          onPressed: () => _giveToken(),
+                        )
+                      else
+                        Text(
+                          'remain: ${_time.toString()} seconds',
+                          style: Theme.of(context).textTheme.headline4,
+                        ),
+                    ],
+                  ),
+                ],
               )
             else
               Text(
-                'remain: ${_time.toString()} seconds',
-                style: Theme.of(context).textTheme.headline4,
-              ),
+                  ethereum != null
+                      ? 'error: The network is not supported (only Polygon in supported).'
+                      : "error: Can't connect to Metamask",
+                  style: Theme.of(context).textTheme.headline4),
           ],
         ),
       ),
