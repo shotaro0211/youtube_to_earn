@@ -63,6 +63,7 @@ class _MyHomePageState extends State<MyHomePage> {
   bool _isGot = false;
   bool? _isConnected;
   bool _isLoader = false;
+  String _balance = "";
   final YoutubePlayerController _controller = YoutubePlayerController(
     initialVideoId: 'N0tNPT-3gLE',
     params: const YoutubePlayerParams(
@@ -90,15 +91,19 @@ class _MyHomePageState extends State<MyHomePage> {
         try {
           // Prompt user to connect to the provider, i.e. confirm the connection modal
           final accs = await ethereum!.requestAccount();
-          print(accs.first);
           final web3provider = Web3Provider(ethereum!);
           final network = await web3provider.getNetwork();
-          print(network.chainId);
           final signer = web3provider.getSigner();
-          const contractAddress = '0x656C214981ab2A519c1ef0e90517F0240a74B343';
+          const contractAddress = '0x707D798D13319F495f82E4222E546ee3d4E3F5e9';
           final abi = await rootBundle.loadString('json/youtube_to_earn.json');
           _contract = Contract(contractAddress, abi, signer);
-          if (network.chainId == 4) {
+          _contract!.call('balance').then((value) {
+            setState(() {
+              _balance = value.toString();
+              _balance = _balance.substring(0, _balance.length - 18);
+            });
+          });
+          if (network.chainId == 137) {
             _isConnected = true;
           } else {
             _isConnected = false;
@@ -127,7 +132,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void _giveToken() {
-    _contract!.call('giveToken', [1234]).then((value) {
+    _contract!.call('giveToken', [211]).then((value) {
       _isLoader = false;
       _isGot = true;
     });
@@ -144,6 +149,12 @@ class _MyHomePageState extends State<MyHomePage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
+            if (ethereum != null)
+              SizedBox(
+                height: 80,
+                child: Text('balance: $_balance JPYC',
+                    style: Theme.of(context).textTheme.headline3),
+              ),
             if (_isConnected == null)
               Container()
             else if (_isConnected == true)
@@ -152,11 +163,14 @@ class _MyHomePageState extends State<MyHomePage> {
                 children: [
                   Column(
                     children: <Widget>[
-                      SizedBox(
-                        height: 600,
-                        child: YoutubePlayerControllerProvider(
-                          controller: _controller,
-                          child: const YoutubePlayerIFrame(),
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 800.0),
+                        child: SizedBox(
+                          width: 800,
+                          child: YoutubePlayerControllerProvider(
+                            controller: _controller,
+                            child: const YoutubePlayerIFrame(),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 30),
@@ -170,7 +184,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       else if (_isGiven)
                         OutlinedButton(
                           child: Text('Get',
-                              style: Theme.of(context).textTheme.button),
+                              style: Theme.of(context).textTheme.headline4),
                           onPressed: () => _giveToken(),
                         )
                       else
