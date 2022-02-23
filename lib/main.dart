@@ -1,12 +1,14 @@
-import 'dart:convert';
+import 'dart:async';
+// ignore: avoid_web_libraries_in_flutter
+import 'dart:html';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_web3/ethereum.dart';
 import 'package:flutter_web3/flutter_web3.dart';
 import 'package:flutter/services.dart' show rootBundle;
+import 'package:youtube_player_iframe/youtube_player_iframe.dart';
 
 void main() {
-  runApp(MyApp());
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -53,25 +55,42 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  String? _myAddress;
-  BigNumber? _balance;
-  Contract? _contract;
+  Timer? _timer;
+  int _time = 43;
+  bool _visible = false;
+  final YoutubePlayerController _controller = YoutubePlayerController(
+    initialVideoId: 'N0tNPT-3gLE',
+    params: const YoutubePlayerParams(
+      mute: true,
+      playlist: [
+        'N0tNPT-3gLE',
+      ],
+      loop: true,
+    ),
+  );
 
   @override
   void initState() {
     super.initState();
+    startTimer();
+    document.addEventListener("visibilitychange", (event) {
+      if (document.visibilityState == "hidden") {
+        _timer!.cancel();
+      } else {
+        startTimer();
+      }
+    });
     Future(() async {
       if (ethereum != null) {
         try {
           // Prompt user to connect to the provider, i.e. confirm the connection modal
           final accs = await ethereum!.requestAccount();
-          _myAddress = accs.first; // Get all accounts in node disposal
-          // [foo,bar]
+          print(accs.first);
           final web3provider = Web3Provider(ethereum!);
           final signer = web3provider.getSigner();
           const contractAddress = '0x794372fC0aE0E8927629c6fa606B99C65c91D6CC';
           final abi = await rootBundle.loadString('json/ERC20.json');
-          _contract = Contract(contractAddress, abi, signer);
+          Contract(contractAddress, abi, signer);
         } on EthereumUserRejected {
           print('User rejected the modal');
         }
@@ -79,11 +98,17 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
-  void _totalSupply() {
-    _contract!.call<BigNumber>('balanceOf', [_myAddress]).then((value) {
-      setState(() {
-        _balance = value;
-      });
+  void startTimer() {
+    _timer = Timer.periodic(const Duration(seconds: 1), _onTimer);
+  }
+
+  void _onTimer(Timer timer) {
+    setState(() {
+      _time -= 1;
+      if (_time == 0) {
+        _timer!.cancel();
+        _visible = true;
+      }
     });
   }
 
@@ -97,21 +122,27 @@ class _MyHomePageState extends State<MyHomePage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            Text(
-              'my address: $_myAddress',
+            SizedBox(
+              height: 600,
+              child: YoutubePlayerControllerProvider(
+                controller: _controller,
+                child: const YoutubePlayerIFrame(),
+              ),
             ),
-            Text(
-              'balance: $_balance',
-              style: Theme.of(context).textTheme.headline4,
-            ),
+            const SizedBox(height: 30),
+            if (_visible)
+              OutlinedButton(
+                child: const Text('Get'),
+                onPressed: () => null,
+              )
+            else
+              Text(
+                'remain: ${_time.toString()} seconds',
+                style: Theme.of(context).textTheme.headline4,
+              ),
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _totalSupply,
-        tooltip: 'Increment',
-        child: Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
     );
   }
 }
