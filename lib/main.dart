@@ -2,13 +2,11 @@ import 'dart:async';
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:html';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:flutter_web3/flutter_web3.dart';
 import 'package:flutter/services.dart' show rootBundle;
 
-import 'mobile_youtube.dart';
 import 'web_youtube.dart';
 
 void main() {
@@ -160,7 +158,7 @@ class _MyHomePageState extends State<MyHomePage> {
                         constraints: const BoxConstraints(maxWidth: 800.0),
                         child: const SizedBox(
                           width: 800,
-                          child: kIsWeb ? WebYoutube() : MobileYoutube(),
+                          child: WebYoutube(),
                         ),
                       ),
                       const SizedBox(height: 30),
