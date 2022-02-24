@@ -2,11 +2,14 @@ import 'dart:async';
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:html';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:flutter_web3/flutter_web3.dart';
 import 'package:flutter/services.dart' show rootBundle;
-import 'package:youtube_player_iframe/youtube_player_iframe.dart';
+
+import 'mobile_youtube.dart';
+import 'web_youtube.dart';
 
 void main() {
   runApp(const MyApp());
@@ -64,16 +67,6 @@ class _MyHomePageState extends State<MyHomePage> {
   bool? _isConnected;
   bool _isLoader = false;
   String _balance = "";
-  final YoutubePlayerController _controller = YoutubePlayerController(
-    initialVideoId: 'N0tNPT-3gLE',
-    params: const YoutubePlayerParams(
-      mute: true,
-      playlist: [
-        'N0tNPT-3gLE',
-      ],
-      loop: true,
-    ),
-  );
 
   @override
   void initState() {
@@ -165,12 +158,9 @@ class _MyHomePageState extends State<MyHomePage> {
                     children: <Widget>[
                       ConstrainedBox(
                         constraints: const BoxConstraints(maxWidth: 800.0),
-                        child: SizedBox(
+                        child: const SizedBox(
                           width: 800,
-                          child: YoutubePlayerControllerProvider(
-                            controller: _controller,
-                            child: const YoutubePlayerIFrame(),
-                          ),
+                          child: kIsWeb ? WebYoutube() : MobileYoutube(),
                         ),
                       ),
                       const SizedBox(height: 30),
